@@ -40,7 +40,7 @@ depends: []
 #define QMC5883L_REG_CHIP_ID 0x0D   // returns 0xFF
 
 // ----- I2C address (7-bit) -----
-#define QMC5883L_I2C_ADDR (0x0D << 1) // match your I2C API (8-bit address)
+#define QMC5883L_I2C_ADDR (0x0D) // raw 7-bit address
 
 // ----- Driver configuration (match datasheet §7.1 Example) -----
 #define QMC5883L_CTRL1_CONT_8G_200HZ_OSR512                                    \
