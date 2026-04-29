@@ -113,7 +113,7 @@ public:
 
   static void ThreadFunc(QMC5883L *sensor) {
     while (true) {
-      if (sensor->new_data_.Wait(100) == ErrorCode::OK) {
+      if (sensor->new_data_.Wait(100) == LibXR::ErrorCode::OK) {
         sensor->ReadMagnetometer();
         sensor->ParseMagData();
         sensor->topic_mag_.Publish(sensor->mag_data_);
@@ -179,15 +179,15 @@ public:
 
   static int CommandFunc(QMC5883L *sensor, int argc, char **argv) {
     if (argc == 1) {
-      LibXR::STDIO::Printf("Usage:\r\n");
-      LibXR::STDIO::Printf("  show [time_ms] [interval_ms] - Print sensor data "
-                           "periodically.\r\n");
+      LibXR::STDIO::Printf<"Usage:\r\n">();
+      LibXR::STDIO::Printf<"  show [time_ms] [interval_ms] - Print sensor data "
+                           "periodically.\r\n">();
     } else if (argc == 4 && strcmp(argv[1], "show") == 0) {
       int time_ms = atoi(argv[2]);
       int interval_ms = atoi(argv[3]);
       for (int i = 0; i < time_ms / interval_ms; i++) {
         LibXR::Thread::Sleep(interval_ms);
-        LibXR::STDIO::Printf("Mag(mG): x=%f, y=%f, z=%f\r\n",
+        LibXR::STDIO::Printf<"Mag(mG): x=%f, y=%f, z=%f\r\n">(
                              sensor->mag_data_.x(), sensor->mag_data_.y(),
                              sensor->mag_data_.z());
       }
