@@ -49,18 +49,22 @@ depends: []
 class QMC5883L
 {
  public:
-  QMC5883L(LibXR::GPIO& external_qmc5883l_int, LibXR::I2C& external_i2c_qmc5883l,
-           LibXR::RamFS& external_ramfs, LibXR::Quaternion<float>&& rotation,
-           const char* topic_name, size_t task_stack_depth)
+  QMC5883L(
+      LibXR::GPIO& interrupt,
+      LibXR::I2C& i2c,
+      LibXR::RamFS& ramfs,
+      LibXR::Quaternion<float>&& rotation = {1.0f, 0.0f, 0.0f, 0.0f},
+      const char* topic_name = "qmc5883l_mag",
+      size_t task_stack_depth = 1536)
       : rotation_(std::move(rotation)),
         topic_mag_(LibXR::Topic::CreateTopic<decltype(mag_data_)>(topic_name)),
-        int_drdy_(std::addressof(external_qmc5883l_int)),
-        i2c_(std::addressof(external_i2c_qmc5883l)),
+        int_drdy_(std::addressof(interrupt)),
+        i2c_(std::addressof(i2c)),
         op_i2c_read_(sem_i2c_),
         op_i2c_write_(sem_i2c_),
         cmd_file_(LibXR::RamFS::CreateFile("qmc5883l", CommandFunc, this))
   {
-    external_ramfs.Add(cmd_file_);
+    ramfs.Add(cmd_file_);
 
     int_drdy_->DisableInterrupt();
     auto int_cb = LibXR::GPIO::Callback::Create(
