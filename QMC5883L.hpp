@@ -46,9 +46,32 @@ depends: []
 
 #define QMC5883L_MAG_RX_LEN 6
 
+/**
+ * @brief QMC5883L 三轴磁力计驱动，通过 I2C 读取并发布磁场数据，单位 mG。
+ *        Driver for the QMC5883L 3-axis magnetometer; reads it over I2C and publishes
+ *        the magnetic field in mG.
+ */
 class QMC5883L
 {
  public:
+  /**
+   * @brief 构造 QMC5883L，初始化芯片并创建采集线程，初始化失败时每 100 ms 重试。
+   *        Construct QMC5883L, initialize the chip and create the acquisition thread;
+   *        a failed initialization is retried every 100 ms.
+   *
+   * @param interrupt 连接 DRDY 引脚的中断 GPIO。
+   *                  Interrupt GPIO connected to the DRDY pin.
+   * @param i2c 芯片所在的 I2C 总线。
+   *            I2C bus of the chip.
+   * @param ramfs 接收 `qmc5883l` 命令的 RamFS。
+   *              RamFS that receives the `qmc5883l` command.
+   * @param rotation 安装姿态四元数，分量顺序为 w、x、y、z。
+   *                 Mounting rotation quaternion with components in the order w, x, y, z.
+   * @param topic_name 磁场 Topic 名称。
+   *                   Name of the magnetic-field Topic.
+   * @param task_stack_depth 采集线程栈深。
+   *                         Stack depth of the acquisition thread.
+   */
   QMC5883L(
       LibXR::GPIO& interrupt,
       LibXR::I2C& i2c,
@@ -83,6 +106,14 @@ class QMC5883L
                    LibXR::Thread::Priority::REALTIME);
   }
 
+  /**
+   * @brief 检查 CHIP_ID 并写入配置：连续模式、±8 G、200 Hz、OSR 512。
+   *        Check CHIP_ID and write the configuration: continuous mode, ±8 G, 200 Hz,
+   *        OSR 512.
+   *
+   * @return CHIP_ID 正确时为 true，否则为 false。
+   *         true when CHIP_ID matches, false otherwise.
+   */
   bool Init()
   {
     LibXR::Thread::Sleep(1);
@@ -110,6 +141,14 @@ class QMC5883L
     return true;
   }
 
+  /**
+   * @brief 采集线程：等待 DRDY 中断，读取并发布磁场数据。
+   *        Acquisition thread: wait for the DRDY interrupt, then read and publish the
+   *        magnetic field.
+   *
+   * @param sensor QMC5883L 实例。
+   *               QMC5883L instance.
+   */
   static void ThreadFunc(QMC5883L* sensor)
   {
     while (true)
@@ -137,12 +176,23 @@ class QMC5883L
     }
   }
 
+  /**
+   * @brief 从 X_LSB 起读取 6 字节原始磁场数据到内部缓冲区。
+   *        Read the 6 raw magnetic-field bytes starting at X_LSB into the internal
+   *        buffer.
+   */
   void ReadMagnetometer()
   {
     i2c_->MemRead(QMC5883L_I2C_ADDR, QMC5883L_REG_X_LSB, read_buffer_, op_i2c_read_,
                   LibXR::I2C::MemAddrLength::BYTE_8);
   }
 
+  /**
+   * @brief 把缓冲区中的原始数据换算为 mG 并按 rotation 旋转，
+   *        原始值全为 0 时保持上一次的值。
+   *        Convert the buffered raw data to mG and rotate it by rotation;
+   *        the previous value is kept when all raw values are 0.
+   */
   void ParseMagData()
   {
     std::array<int16_t, 3> raw;
@@ -164,6 +214,15 @@ class QMC5883L
     mag_data_ = rotation_ * vec;
   }
 
+  /**
+   * @brief 读取一个寄存器。
+   *        Read one register.
+   *
+   * @param reg 寄存器地址。
+   *            Register address.
+   * @return 寄存器值。
+   *         Register value.
+   */
   uint8_t ReadReg(uint8_t reg)
   {
     uint8_t data = 0;
@@ -171,11 +230,25 @@ class QMC5883L
     return data;
   }
 
+  /**
+   * @brief 写入一个寄存器。
+   *        Write one register.
+   *
+   * @param reg 寄存器地址。
+   *            Register address.
+   * @param val 写入值。
+   *            Value to write.
+   */
   void WriteReg(uint8_t reg, uint8_t val)
   {
     i2c_->MemWrite(QMC5883L_I2C_ADDR, reg, val, op_i2c_write_);
   }
 
+  /**
+   * @brief 监控回调：数据溢出或出现 NaN、Inf 时输出告警。
+   *        Monitor callback: log a warning on data overflow or when the data contains
+   *        NaN or Inf.
+   */
   void OnMonitor(void)
   {
     // 溢出位检测
@@ -192,6 +265,20 @@ class QMC5883L
     }
   }
 
+  /**
+   * @brief `qmc5883l` 命令入口，`show <time_ms> <interval_ms>` 周期打印磁场。
+   *        Entry of the `qmc5883l` command; `show <time_ms> <interval_ms>` prints the
+   *        magnetic field periodically.
+   *
+   * @param sensor QMC5883L 实例。
+   *               QMC5883L instance.
+   * @param argc 参数个数。
+   *             Argument count.
+   * @param argv 参数列表。
+   *             Argument list.
+   * @return 命令返回值，恒为 0。
+   *         Command return value, always 0.
+   */
   static int CommandFunc(QMC5883L* sensor, int argc, char** argv)
   {
     if (argc == 1)
