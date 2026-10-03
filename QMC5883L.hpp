@@ -2,7 +2,7 @@
 
 // clang-format off
 /* === MODULE MANIFEST V2 ===
-module_description: QST QMC5883L 三轴磁力计驱动模块 / Driver module for QMC5883L 3-axis magnetometer
+module_description: QST QMC5883L 三轴磁力计驱动模块 / Driver module for the QST QMC5883L 3-axis magnetometer
 depends: []
 === END MANIFEST === */
 // clang-format on
@@ -105,7 +105,7 @@ class QMC5883L
 
     LibXR::Thread::Sleep(5);
 
-    // DRDY: default低，数据就绪拉高直到读数据（上升沿有效）
+    // DRDY 默认为低电平，数据就绪时拉高直到数据被读取，上升沿有效
     int_drdy_->EnableInterrupt();
     return true;
   }
@@ -155,7 +155,7 @@ class QMC5883L
       return;
     }
 
-    // 标度：mG；如需 μT 可乘以 0.1
+    // 标度：mG
     Eigen::Matrix<float, 3, 1> vec;
     vec[0] = raw[0] * QMC5883L_SCALE_MG_PER_LSB;
     vec[1] = raw[1] * QMC5883L_SCALE_MG_PER_LSB;
@@ -178,7 +178,7 @@ class QMC5883L
 
   void OnMonitor(void)
   {
-    // 溢出位检测（可选）
+    // 溢出位检测
     uint8_t st = ReadReg(QMC5883L_REG_STATUS);
     if (st & 0x02)
     {  // OVL
