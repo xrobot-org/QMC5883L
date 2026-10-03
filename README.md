@@ -74,7 +74,7 @@ An instance written by `xrobot instance add xrobot-org/QMC5883L`, with `interrup
 ```yaml
 modules:
   - module: xrobot-org/QMC5883L
-    id: qmc5883l
+    id: qmc5883l_0
     args:
       - interrupt: CMPS_INT
       - i2c: i2c1
